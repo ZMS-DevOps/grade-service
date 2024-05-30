@@ -112,6 +112,15 @@ func (service *ReviewService) Update(id primitive.ObjectID, reviewType int, comm
 	return nil
 }
 
+func (service *ReviewService) Delete(id primitive.ObjectID) error {
+	err := service.store.Delete(id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ratingToIndex(rating float32) int {
 	switch {
 	case rating <= 1:
