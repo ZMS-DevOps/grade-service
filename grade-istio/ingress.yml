@@ -1,0 +1,19 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: grade
+  namespace: backend
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - api-gateway
+  http:
+    - match:
+        - uri:
+            prefix: "/grade"
+      route:
+        - destination:
+            host: grade.backend.svc.cluster.local
+            port:
+              number: 8086

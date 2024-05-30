@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grade
+  namespace: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grade
+  template:
+    metadata:
+      labels:
+        app: grade
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: grade
+          image: devopszms2024/zms-devops-grade-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - configMapRef:
+                name: grade-configmap
+            - configMapRef:
+                name: mongodb-grade-configmap
+            - secretRef:
+                name: mongodb-grade-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grade
+  namespace: backend
+spec:
+  selector:
+    app: grade
+  ports:
+    - protocol: TCP
+      name: http
+      port: 8086
+      targetPort: 8086
