@@ -1,0 +1,14 @@
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: grade
+  namespace: backend
+spec:
+  selector:
+    matchLabels:
+     app: grade
+  jwtRules:
+    - forwardOriginalToken: true
+      outputPayloadToHeader: x-jwt-payload
+      issuer: "http://keycloak.backend.svc.cluster.local/realms/Istio"
+      jwksUri: "http://keycloak.backend.svc.cluster.local/realms/Istio/protocol/openid-connect/certs"

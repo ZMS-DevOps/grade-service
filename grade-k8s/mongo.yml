@@ -1,0 +1,80 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-grade
+  namespace: backend
+spec:
+  selector:
+    app: mongodb-grade
+  ports:
+    - protocol: TCP
+      port: 27017
+      targetPort: 27017
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb-grade
+  namespace: backend
+spec:
+  serviceName: mongodb-grade
+  selector:
+    matchLabels:
+      app: mongodb-grade
+  template:
+    metadata:
+      labels:
+        app: mongodb-grade
+    spec:
+      containers:
+        - name: mongodb-grade
+          image: mongo
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-auth-secret
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-auth-secret
+                  key: MONGO_INITDB_ROOT_PASSWORD
+          volumeMounts:
+            - name: mongodb-grade-storage
+              mountPath: /data/db
+      volumes:
+        - name: mongodb-grade-storage
+          persistentVolumeClaim:
+            claimName: mongodb-grade-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-grade-pvc
+  namespace: backend
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongodb-grade-pv
+  namespace: backend
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /data/mongo
