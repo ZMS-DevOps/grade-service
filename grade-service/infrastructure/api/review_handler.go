@@ -6,6 +6,7 @@ import (
 	"github.com/mmmajder/zms-devops-auth-service/application"
 	"github.com/mmmajder/zms-devops-auth-service/domain"
 	"github.com/mmmajder/zms-devops-auth-service/infrastructure/request"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"strconv"
 )
@@ -22,6 +23,7 @@ func NewReviewHandler(reviewService *application.ReviewService) *ReviewHandler {
 
 func (handler *ReviewHandler) Init(router *mux.Router) {
 	router.HandleFunc(domain.GradeContextPath, handler.AddReview).Methods(http.MethodPost)
+	router.HandleFunc(domain.GradeContextPath+"/{id}", handler.UpdateReview).Methods(http.MethodPut)
 	router.HandleFunc(domain.GradeContextPath+"/{sub-reviewed}/{type}", handler.GetAllReviewsBySubReviewed).Methods(http.MethodGet)
 	router.HandleFunc(domain.GradeContextPath+"/health", handler.GetHealthCheck).Methods(http.MethodGet)
 }
@@ -57,6 +59,45 @@ func (handler *ReviewHandler) AddReview(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeResponse(w, http.StatusCreated, response)
+}
+
+func (handler *ReviewHandler) UpdateReview(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	if id == "" {
+		handleError(w, http.StatusBadRequest, domain.InvalidIDErrorMessage)
+		return
+	}
+
+	reviewPrimitiveId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		handleError(w, http.StatusBadRequest, domain.InvalidIDErrorMessage)
+		return
+	}
+
+	var updateReviewRequest request.UpdateReviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&updateReviewRequest); err != nil {
+		handleError(w, http.StatusBadRequest, "Invalid update review payload")
+		return
+	}
+
+	if err := updateReviewRequest.AreValidRequestData(); err != nil {
+		handleError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err = handler.reviewService.Update(
+		reviewPrimitiveId,
+		updateReviewRequest.ReviewType,
+		updateReviewRequest.Comment,
+		updateReviewRequest.Grade,
+	)
+
+	if err != nil {
+		handleError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeResponse(w, http.StatusOK, nil)
 }
 
 func (handler *ReviewHandler) GetAllReviewsBySubReviewed(w http.ResponseWriter, r *http.Request) {

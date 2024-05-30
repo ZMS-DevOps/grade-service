@@ -4,7 +4,6 @@
 Build and push to DockerHub
 ```shell
 docker build -t devopszms2024/zms-devops-grade-service:latest .
-docker build -t devopszms2024/zms-devops-angular-app:latest .
 docker push devopszms2024/zms-devops-grade-service:latest
 ```
 
