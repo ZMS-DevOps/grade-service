@@ -66,7 +66,6 @@ jobs:
       - name: SonarCloud Scan
         uses: sonarsource/sonarcloud-github-action@master
         with:
-          projectBaseDir: grade-service
           args: >
             -Dsonar.organization=zms-devops
             -Dsonar.projectKey=ZMS-DevOps_grade-service
@@ -104,6 +103,12 @@ jobs:
     name: Push Docker image to Docker Hub
     needs: [semantic-versioning, sonar-cloud]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
   
     steps:
       - name: Checkout
@@ -136,12 +141,19 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v5
         with:
           context: ./grade-service
           file: ./grade-service/Dockerfile
+          platforms: ${{ matrix.platform }}
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{secrets.DOCKER_IMAGE_NAME}}:${{needs.semantic-versioning.outputs.image-tag}}

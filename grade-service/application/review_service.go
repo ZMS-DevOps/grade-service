@@ -3,6 +3,7 @@ package application
 import (
 	"github.com/mmmajder/zms-devops-auth-service/domain"
 	"github.com/mmmajder/zms-devops-auth-service/infrastructure/dto"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"net/http"
 	"time"
@@ -94,6 +95,21 @@ func (service *ReviewService) getReviewReportData(reviews []*domain.Review) (flo
 	}
 
 	return averageGrade, numberOfStars
+}
+
+func (service *ReviewService) Update(id primitive.ObjectID, reviewType int, comment string, grade float32) error {
+	review, err := service.store.Get(id)
+	review.Comment = comment
+	review.Grade = grade
+	review.DateOfModification = time.Now()
+	err = service.store.Update(id, review)
+	if err != nil {
+		return err
+	}
+
+	service.updateAverageRatingInServices(reviewType, grade)
+
+	return nil
 }
 
 func ratingToIndex(rating float32) int {
