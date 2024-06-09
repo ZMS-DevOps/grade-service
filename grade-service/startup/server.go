@@ -3,6 +3,7 @@ package startup
 import (
 	"fmt"
 	booking "github.com/ZMS-DevOps/booking-service/proto"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gorilla/mux"
 	"github.com/mmmajder/zms-devops-auth-service/application"
 	"github.com/mmmajder/zms-devops-auth-service/application/external"
@@ -27,25 +28,25 @@ func NewServer(config *config.Config) *Server {
 	}
 }
 
-func (server *Server) Start() {
-	server.setupHandlers()
+func (server *Server) Start(producer *kafka.Producer) {
+	server.setupHandlers(producer)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", server.config.Port), server.router))
 }
 
-func (server *Server) setupHandlers() {
+func (server *Server) setupHandlers(producer *kafka.Producer) {
 	mongoClient := server.initMongoClient()
 	reviewStore := server.initReviewStore(mongoClient)
 	bookingClient := external.NewBookingClient(server.getBookingAddress())
 
-	reviewService := server.initReviewService(reviewStore, bookingClient)
+	reviewService := server.initReviewService(reviewStore, producer, bookingClient)
 	reviewHandler := server.initReviewHandler(reviewService)
 
 	reviewHandler.Init(server.router)
 }
 
-func (server *Server) initReviewService(store domain.ReviewStore, bookingClient booking.BookingServiceClient) *application.ReviewService {
+func (server *Server) initReviewService(store domain.ReviewStore, producer *kafka.Producer, bookingClient booking.BookingServiceClient) *application.ReviewService {
 
-	return application.NewReviewService(store, &http.Client{}, bookingClient)
+	return application.NewReviewService(store, &http.Client{}, producer, bookingClient)
 }
 
 func (server *Server) initReviewHandler(authService *application.ReviewService) *api.ReviewHandler {
