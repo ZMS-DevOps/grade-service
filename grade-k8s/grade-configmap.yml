@@ -5,3 +5,5 @@ metadata:
   namespace: backend
 data:
   SERVICE_PORT: "8086"
+  BOOKING_HOST: "booking"
+  BOOKING_PORT: "8001"

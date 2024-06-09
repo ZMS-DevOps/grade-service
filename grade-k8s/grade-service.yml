@@ -27,6 +27,11 @@ spec:
                 name: mongodb-grade-configmap
             - secretRef:
                 name: mongodb-grade-secret
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "my-kafka.backend.svc.cluster.local:9092"
+            - name: KAFKA_AUTH_PASSWORD
+              value: "6DUnElt7GW"
 ---
 apiVersion: v1
 kind: Service
@@ -41,3 +46,7 @@ spec:
       name: http
       port: 8086
       targetPort: 8086
+    - protocol: TCP
+      name: grpc
+      port: 8001
+      targetPort: 8001

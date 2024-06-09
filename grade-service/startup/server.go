@@ -2,8 +2,10 @@ package startup
 
 import (
 	"fmt"
+	booking "github.com/ZMS-DevOps/booking-service/proto"
 	"github.com/gorilla/mux"
 	"github.com/mmmajder/zms-devops-auth-service/application"
+	"github.com/mmmajder/zms-devops-auth-service/application/external"
 	"github.com/mmmajder/zms-devops-auth-service/domain"
 	"github.com/mmmajder/zms-devops-auth-service/infrastructure/api"
 	"github.com/mmmajder/zms-devops-auth-service/infrastructure/persistence"
@@ -33,14 +35,17 @@ func (server *Server) Start() {
 func (server *Server) setupHandlers() {
 	mongoClient := server.initMongoClient()
 	reviewStore := server.initReviewStore(mongoClient)
-	authService := server.initReviewService(reviewStore)
-	authHandler := server.initReviewHandler(authService)
-	authHandler.Init(server.router)
+	bookingClient := external.NewBookingClient(server.getBookingAddress())
+
+	reviewService := server.initReviewService(reviewStore, bookingClient)
+	reviewHandler := server.initReviewHandler(reviewService)
+
+	reviewHandler.Init(server.router)
 }
 
-func (server *Server) initReviewService(store domain.ReviewStore) *application.ReviewService {
+func (server *Server) initReviewService(store domain.ReviewStore, bookingClient booking.BookingServiceClient) *application.ReviewService {
 
-	return application.NewReviewService(store, &http.Client{})
+	return application.NewReviewService(store, &http.Client{}, bookingClient)
 }
 
 func (server *Server) initReviewHandler(authService *application.ReviewService) *api.ReviewHandler {
@@ -62,4 +67,8 @@ func (server *Server) initReviewStore(client *mongo.Client) domain.ReviewStore {
 		_, _ = store.Insert(review)
 	}
 	return store
+}
+
+func (server *Server) getBookingAddress() string {
+	return fmt.Sprintf("%s:%s", server.config.BookingHost, server.config.BookingPort)
 }

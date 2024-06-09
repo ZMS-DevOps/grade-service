@@ -25,7 +25,7 @@ func (handler *ReviewHandler) Init(router *mux.Router) {
 	router.HandleFunc(domain.GradeContextPath, handler.AddReview).Methods(http.MethodPost)
 	router.HandleFunc(domain.GradeContextPath+"/{id}", handler.UpdateReview).Methods(http.MethodPut)
 	router.HandleFunc(domain.GradeContextPath+"/{sub-reviewed}/{type}", handler.GetAllReviewsBySubReviewed).Methods(http.MethodGet)
-	router.HandleFunc(domain.GradeContextPath+"/{id}", handler.DeleteReview).Methods(http.MethodDelete)
+	router.HandleFunc(domain.GradeContextPath+"/{id}/{type}", handler.DeleteReview).Methods(http.MethodDelete)
 	router.HandleFunc(domain.GradeContextPath+"/health", handler.GetHealthCheck).Methods(http.MethodGet)
 }
 
@@ -114,7 +114,13 @@ func (handler *ReviewHandler) DeleteReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := handler.reviewService.Delete(reviewPrimitiveId); err != nil {
+	reviewType, err := strconv.Atoi(mux.Vars(r)["type"])
+	if err != nil {
+		handleError(w, http.StatusBadRequest, "Invalid number for reviewed type")
+		return
+	}
+
+	if err := handler.reviewService.Delete(reviewPrimitiveId, reviewType); err != nil {
 		handleError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
