@@ -1,6 +1,9 @@
 package application
 
 import (
+	"errors"
+	booking "github.com/ZMS-DevOps/booking-service/proto"
+	"github.com/mmmajder/zms-devops-auth-service/application/external"
 	"github.com/mmmajder/zms-devops-auth-service/domain"
 	"github.com/mmmajder/zms-devops-auth-service/infrastructure/dto"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -10,38 +13,47 @@ import (
 )
 
 type ReviewService struct {
-	store      domain.ReviewStore
-	HttpClient *http.Client
+	store         domain.ReviewStore
+	HttpClient    *http.Client
+	bookingClient booking.BookingServiceClient
 }
 
-func NewReviewService(store domain.ReviewStore, httpClient *http.Client) *ReviewService {
+func NewReviewService(store domain.ReviewStore, httpClient *http.Client, bookingClient booking.BookingServiceClient) *ReviewService {
 	return &ReviewService{
-		store:      store,
-		HttpClient: httpClient,
+		store:         store,
+		HttpClient:    httpClient,
+		bookingClient: bookingClient,
 	}
 }
 
 func (service *ReviewService) Add(reviewType int, comment string, grade float32, reviewerSub string, reviewedSub string, fullNameReviewer string) (dto.ReviewDTO, error) {
-	//todo: call booking-service to check if reviewerSub has DONE reservation for reviewedSub
-	review := &domain.Review{
-		Comment:            comment,
-		Grade:              grade,
-		SubReviewer:        reviewerSub,
-		SubReviewed:        reviewedSub,
-		ReviewerFullName:   fullNameReviewer,
-		DateOfModification: time.Now(),
+	if reviewCanCreate := service.userCanReview(reviewType, reviewerSub, reviewedSub); reviewCanCreate {
+		review := &domain.Review{
+			Comment:            comment,
+			Grade:              grade,
+			SubReviewer:        reviewerSub,
+			SubReviewed:        reviewedSub,
+			ReviewerFullName:   fullNameReviewer,
+			DateOfModification: time.Now(),
+			Type:               domain.ReviewType(reviewType),
+		}
+
+		id, err := service.store.Insert(review)
+		if err != nil {
+			return dto.ReviewDTO{}, err
+		}
+
+		response, err := service.store.GetAllBySubReviewed(reviewedSub, reviewType)
+		log.Printf("new average rating %f", service.getAverageRating(response))
+
+		reviewDTO := dto.FromReview(review)
+		reviewDTO.Id = id
+
+		return reviewDTO, nil
 	}
 
-	id, err := service.store.Insert(review)
-	if err != nil {
-		return dto.ReviewDTO{}, err
-	}
+	return dto.ReviewDTO{}, errors.New("reviewer doesn't have   already exists")
 
-	service.updateAverageRatingInServices(reviewType, grade)
-
-	reviewDTO := dto.FromReview(review)
-	reviewDTO.Id = id
-	return reviewDTO, nil
 }
 
 func (service *ReviewService) GetAllBySubReviewed(subReviewed string, reviewType int) (dto.ReviewReportDTO, error) {
@@ -61,13 +73,31 @@ func (service *ReviewService) GetAllBySubReviewed(subReviewed string, reviewType
 	return reviewReportDTO, nil
 }
 
-func (service *ReviewService) updateAverageRatingInServices(reviewType int, grade float32) {
-	switch reviewType {
-	case 0:
-		//todo: call user-service to update averageRating for reviewerSub
-	case 1:
-		//todo: call accomodation-service to update averageRating for reviewerSub
+func (service *ReviewService) Update(id primitive.ObjectID, reviewType int, comment string, grade float32) error {
+	review, err := service.store.Update(id, comment, grade)
+	if err != nil {
+		return err
 	}
+
+	response, err := service.store.GetAllBySubReviewed(review.SubReviewed, reviewType)
+	log.Printf("new average rating %f", service.getAverageRating(response))
+
+	return nil
+}
+
+func (service *ReviewService) Delete(id primitive.ObjectID, reviewType int) error {
+	review, err := service.store.Get(id)
+	if err != nil {
+		return err
+	}
+	if err = service.store.Delete(id); err != nil {
+		return err
+	}
+
+	response, err := service.store.GetAllBySubReviewed(review.SubReviewed, reviewType)
+	log.Printf("new average rating %f", service.getAverageRating(response))
+
+	return nil
 }
 
 func (service *ReviewService) getReviewReportData(reviews []*domain.Review) (float32, []dto.NumberOfStars) {
@@ -97,28 +127,36 @@ func (service *ReviewService) getReviewReportData(reviews []*domain.Review) (flo
 	return averageGrade, numberOfStars
 }
 
-func (service *ReviewService) Update(id primitive.ObjectID, reviewType int, comment string, grade float32) error {
-	review, err := service.store.Get(id)
-	review.Comment = comment
-	review.Grade = grade
-	review.DateOfModification = time.Now()
-	err = service.store.Update(id, review)
-	if err != nil {
-		return err
+func (service *ReviewService) getAverageRating(reviews []*domain.Review) float32 {
+	var totalGrades float32
+	if len(reviews) == 0 {
+		return 0
 	}
 
-	service.updateAverageRatingInServices(reviewType, grade)
+	for _, review := range reviews {
+		totalGrades += review.Grade
+	}
 
-	return nil
+	return totalGrades / float32(len(reviews))
 }
 
-func (service *ReviewService) Delete(id primitive.ObjectID) error {
-	err := service.store.Delete(id)
-	if err != nil {
-		return err
+func (service *ReviewService) userCanReview(reviewType int, reviewerSub string, reviewedSub string) bool {
+	var canReview bool
+	if reviewType == 0 {
+		response, err := external.IfGuestCanReviewHost(service.bookingClient, reviewerSub, reviewedSub)
+		if err != nil {
+			return false
+		}
+		canReview = response.HasReservation
+	} else {
+		response, err := external.IfGuestCanReviewAccommodation(service.bookingClient, reviewerSub, reviewedSub)
+		if err != nil {
+			return false
+		}
+		canReview = response.HasReservation
 	}
 
-	return nil
+	return canReview
 }
 
 func ratingToIndex(rating float32) int {

@@ -10,5 +10,5 @@ type ReviewStore interface {
 	Insert(review *Review) (primitive.ObjectID, error)
 	Delete(id primitive.ObjectID) error
 	DeleteAll()
-	Update(id primitive.ObjectID, review *Review) error
+	Update(id primitive.ObjectID, comment string, grade float32) (*Review, error)
 }

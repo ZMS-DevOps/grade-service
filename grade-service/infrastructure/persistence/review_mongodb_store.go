@@ -6,6 +6,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
 const (
@@ -58,20 +60,23 @@ func (store *ReviewMongoDBStore) DeleteAll() {
 	store.reviews.DeleteMany(context.TODO(), bson.D{{}})
 }
 
-func (store *ReviewMongoDBStore) Update(id primitive.ObjectID, review *domain.Review) error {
+func (store *ReviewMongoDBStore) Update(id primitive.ObjectID, comment string, grade float32) (*domain.Review, error) {
 	filter := bson.M{"_id": id}
 	update := bson.D{
 		{"$set", bson.D{
-			{"comment", review.Comment},
-			{"grade", review.Grade},
-			{"date_of_modification", review.DateOfModification},
+			{"comment", comment},
+			{"grade", grade},
+			{"date_of_modification", time.Now()},
 		}},
 	}
-	_, err := store.reviews.UpdateOne(context.TODO(), filter, update)
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var updatedReview domain.Review
+	err := store.reviews.FindOneAndUpdate(context.TODO(), filter, update, opts).Decode(&updatedReview)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return &updatedReview, nil
 }
 
 func (store *ReviewMongoDBStore) filter(filter interface{}) ([]*domain.Review, error) {
