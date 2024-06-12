@@ -11,6 +11,7 @@ type ReviewRequest struct {
 	SubReviewed      string  `json:"subReviewed" validate:"required"`
 	ReviewerFullName string  `json:"reviewerFullName"`
 	ReviewType       int     `json:"reviewType" validate:"min=0,max=1"`
+	HostId           string  `json:"hostId"`
 }
 
 func (request ReviewRequest) AreValidRequestData() error {

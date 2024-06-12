@@ -2,12 +2,11 @@ package application
 
 import (
 	"encoding/json"
-	"errors"
 	booking "github.com/ZMS-DevOps/booking-service/proto"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/mmmajder/zms-devops-auth-service/application/external"
-	"github.com/mmmajder/zms-devops-auth-service/domain"
-	"github.com/mmmajder/zms-devops-auth-service/infrastructure/dto"
+	"github.com/mmmajder/zms-devops-grade-service/application/external"
+	"github.com/mmmajder/zms-devops-grade-service/domain"
+	"github.com/mmmajder/zms-devops-grade-service/infrastructure/dto"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"net/http"
@@ -30,36 +29,35 @@ func NewReviewService(store domain.ReviewStore, httpClient *http.Client, produce
 	}
 }
 
-func (service *ReviewService) Add(reviewType int, comment string, grade float32, reviewerSub string, reviewedSub string, fullNameReviewer string) (dto.ReviewDTO, error) {
-	if reviewCanCreate := service.userCanReview(reviewType, reviewerSub, reviewedSub); reviewCanCreate {
-		review := &domain.Review{
-			Comment:            comment,
-			Grade:              grade,
-			SubReviewer:        reviewerSub,
-			SubReviewed:        reviewedSub,
-			ReviewerFullName:   fullNameReviewer,
-			DateOfModification: time.Now(),
-			Type:               domain.ReviewType(reviewType),
-		}
-
-		id, err := service.store.Insert(review)
-		if err != nil {
-			return dto.ReviewDTO{}, err
-		}
-
-		response, err := service.store.GetAllBySubReviewed(reviewedSub, reviewType)
-		log.Printf("new average rating %f", service.getAverageRating(response))
-
-		service.produceRatingChanged(reviewType, reviewedSub, service.getAverageRating(response))
-		service.produceNotification(reviewType, reviewedSub, fullNameReviewer)
-
-		reviewDTO := dto.FromReview(review)
-		reviewDTO.Id = id
-
-		return reviewDTO, nil
+func (service *ReviewService) Add(reviewType int, comment string, grade float32, reviewerSub string, reviewedSub string, fullNameReviewer string, userId string) (dto.ReviewDTO, error) {
+	//if reviewCanCreate := service.userCanReview(reviewType, reviewerSub, reviewedSub); reviewCanCreate {
+	review := &domain.Review{
+		Comment:            comment,
+		Grade:              grade,
+		SubReviewer:        reviewerSub,
+		SubReviewed:        reviewedSub,
+		ReviewerFullName:   fullNameReviewer,
+		DateOfModification: time.Now(),
+		Type:               domain.ReviewType(reviewType),
+	}
+	id, err := service.store.Insert(review)
+	if err != nil {
+		return dto.ReviewDTO{}, err
 	}
 
-	return dto.ReviewDTO{}, errors.New("reviewer doesn't have   already exists")
+	response, err := service.store.GetAllBySubReviewed(reviewedSub, reviewType)
+	log.Printf("new average rating %f", service.getAverageRating(response))
+
+	service.produceRatingChanged(reviewType, reviewedSub, service.getAverageRating(response))
+	service.produceNotification(reviewType, reviewedSub, fullNameReviewer, userId)
+
+	reviewDTO := dto.FromReview(review)
+	reviewDTO.Id = id
+
+	return reviewDTO, nil
+	//}
+
+	//return dto.ReviewDTO{}, errors.New("reviewer doesn't have   already exists")
 
 }
 
@@ -134,17 +132,22 @@ func (service *ReviewService) produceRatingChanged(reviewType int, reviewedId st
 	service.producer.Flush(4 * 1000)
 }
 
-func (service *ReviewService) produceNotification(reviewType int, reviewedId string, reviewerName string) {
+func (service *ReviewService) produceNotification(reviewType int, reviewedId string, reviewerName string, userId string) {
 	var topic string
+	var notificationDTO dto.NotificationDTO
 	if reviewType == 0 {
 		topic = "host-review.created"
+		notificationDTO = dto.NotificationDTO{
+			UserId:       userId,
+			ReviewerName: reviewerName,
+		}
 	} else {
 		topic = "accommodation-review.created"
-	}
-
-	notificationDTO := dto.NotificationDTO{
-		UserId:       reviewedId,
-		ReviewerName: reviewerName,
+		notificationDTO = dto.NotificationDTO{
+			UserId:          userId,
+			AccommodationId: reviewedId,
+			ReviewerName:    reviewerName,
+		}
 	}
 	message, _ := json.Marshal(notificationDTO)
 	err := service.producer.Produce(&kafka.Message{
@@ -169,8 +172,6 @@ func (service *ReviewService) getReviewReportData(reviews []*domain.Review) (flo
 	for _, review := range reviews {
 		totalGrades += review.Grade
 		gradeCounts[ratingToIndex(review.Grade)]++
-		log.Printf("total grades: %.2f\n", totalGrades)
-		log.Printf("rating: %d\n", ratingToIndex(review.Grade))
 	}
 
 	averageGrade := totalGrades / float32(len(reviews))
@@ -201,6 +202,7 @@ func (service *ReviewService) getAverageRating(reviews []*domain.Review) float32
 
 func (service *ReviewService) userCanReview(reviewType int, reviewerSub string, reviewedSub string) bool {
 	var canReview bool
+	log.Printf("type %d", reviewType)
 	if reviewType == 0 {
 		response, err := external.IfGuestCanReviewHost(service.bookingClient, reviewerSub, reviewedSub)
 		if err != nil {

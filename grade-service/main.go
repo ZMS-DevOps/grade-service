@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	startup "github.com/mmmajder/zms-devops-auth-service/startup"
-	cfg "github.com/mmmajder/zms-devops-auth-service/startup/config"
+	startup "github.com/mmmajder/zms-devops-grade-service/startup"
+	cfg "github.com/mmmajder/zms-devops-grade-service/startup/config"
 	"log"
 	"os"
 )

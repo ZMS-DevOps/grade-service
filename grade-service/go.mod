@@ -1,9 +1,10 @@
-module github.com/mmmajder/zms-devops-auth-service
+module github.com/mmmajder/zms-devops-grade-service
 
 go 1.22
 
 require (
 	github.com/ZMS-DevOps/booking-service v1.0.12
+	github.com/confluentinc/confluent-kafka-go/v2 v2.4.0
 	github.com/go-playground/validator/v10 v10.20.0
 	github.com/gorilla/mux v1.8.1
 	go.mongodb.org/mongo-driver v1.15.0
@@ -19,7 +20,6 @@ require (
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

@@ -1,7 +1,7 @@
 package startup
 
 import (
-	"github.com/mmmajder/zms-devops-auth-service/domain"
+	"github.com/mmmajder/zms-devops-grade-service/domain"
 	"time"
 )
 

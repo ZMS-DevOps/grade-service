@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/mmmajder/zms-devops-auth-service/domain"
+	"github.com/mmmajder/zms-devops-grade-service/domain"
 	"log"
 	"net/http"
 )
