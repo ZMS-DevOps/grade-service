@@ -3,9 +3,9 @@ package api
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/mmmajder/zms-devops-auth-service/application"
-	"github.com/mmmajder/zms-devops-auth-service/domain"
-	"github.com/mmmajder/zms-devops-auth-service/infrastructure/request"
+	"github.com/mmmajder/zms-devops-grade-service/application"
+	"github.com/mmmajder/zms-devops-grade-service/domain"
+	"github.com/mmmajder/zms-devops-grade-service/infrastructure/request"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"strconv"

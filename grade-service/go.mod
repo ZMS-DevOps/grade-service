@@ -1,4 +1,4 @@
-module github.com/mmmajder/zms-devops-auth-service
+module github.com/mmmajder/zms-devops-grade-service
 
 go 1.22
 

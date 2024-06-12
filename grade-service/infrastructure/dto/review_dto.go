@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"github.com/mmmajder/zms-devops-auth-service/domain"
+	"github.com/mmmajder/zms-devops-grade-service/domain"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
