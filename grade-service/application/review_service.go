@@ -30,7 +30,6 @@ func NewReviewService(store domain.ReviewStore, httpClient *http.Client, produce
 }
 
 func (service *ReviewService) Add(reviewType int, comment string, grade float32, reviewerSub string, reviewedSub string, fullNameReviewer string, userId string) (dto.ReviewDTO, error) {
-	log.Printf("before comment %s", comment)
 	//if reviewCanCreate := service.userCanReview(reviewType, reviewerSub, reviewedSub); reviewCanCreate {
 	review := &domain.Review{
 		Comment:            comment,
@@ -41,8 +40,6 @@ func (service *ReviewService) Add(reviewType int, comment string, grade float32,
 		DateOfModification: time.Now(),
 		Type:               domain.ReviewType(reviewType),
 	}
-
-	log.Printf("after", comment)
 	id, err := service.store.Insert(review)
 	if err != nil {
 		return dto.ReviewDTO{}, err
@@ -208,7 +205,6 @@ func (service *ReviewService) userCanReview(reviewType int, reviewerSub string, 
 	log.Printf("type %d", reviewType)
 	if reviewType == 0 {
 		response, err := external.IfGuestCanReviewHost(service.bookingClient, reviewerSub, reviewedSub)
-		log.Printf("response %d", response.HasReservation)
 		if err != nil {
 			return false
 		}
