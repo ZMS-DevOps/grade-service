@@ -52,6 +52,7 @@ func (handler *ReviewHandler) AddReview(w http.ResponseWriter, r *http.Request) 
 		reviewRequest.SubReviewer,
 		reviewRequest.SubReviewed,
 		reviewRequest.ReviewerFullName,
+		reviewRequest.HostId,
 	)
 
 	if err != nil {
