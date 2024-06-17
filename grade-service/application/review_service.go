@@ -2,6 +2,7 @@ package application
 
 import (
 	"encoding/json"
+	"errors"
 	booking "github.com/ZMS-DevOps/booking-service/proto"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/mmmajder/zms-devops-grade-service/application/external"
@@ -30,35 +31,34 @@ func NewReviewService(store domain.ReviewStore, httpClient *http.Client, produce
 }
 
 func (service *ReviewService) Add(reviewType int, comment string, grade float32, reviewerSub string, reviewedSub string, fullNameReviewer string, userId string) (dto.ReviewDTO, error) {
-	//if reviewCanCreate := service.userCanReview(reviewType, reviewerSub, reviewedSub); reviewCanCreate {
-	review := &domain.Review{
-		Comment:            comment,
-		Grade:              grade,
-		SubReviewer:        reviewerSub,
-		SubReviewed:        reviewedSub,
-		ReviewerFullName:   fullNameReviewer,
-		DateOfModification: time.Now(),
-		Type:               domain.ReviewType(reviewType),
+	if reviewCanCreate := service.userCanReview(reviewType, reviewerSub, reviewedSub); reviewCanCreate {
+		review := &domain.Review{
+			Comment:            comment,
+			Grade:              grade,
+			SubReviewer:        reviewerSub,
+			SubReviewed:        reviewedSub,
+			ReviewerFullName:   fullNameReviewer,
+			DateOfModification: time.Now(),
+			Type:               domain.ReviewType(reviewType),
+		}
+		id, err := service.store.Insert(review)
+		if err != nil {
+			return dto.ReviewDTO{}, err
+		}
+
+		response, err := service.store.GetAllBySubReviewed(reviewedSub, reviewType)
+		log.Printf("new average rating %f", service.getAverageRating(response))
+
+		service.produceRatingChanged(reviewType, reviewedSub, service.getAverageRating(response))
+		service.produceNotification(reviewType, reviewedSub, fullNameReviewer, userId)
+
+		reviewDTO := dto.FromReview(review)
+		reviewDTO.Id = id
+
+		return reviewDTO, nil
 	}
-	id, err := service.store.Insert(review)
-	if err != nil {
-		return dto.ReviewDTO{}, err
-	}
 
-	response, err := service.store.GetAllBySubReviewed(reviewedSub, reviewType)
-	log.Printf("new average rating %f", service.getAverageRating(response))
-
-	service.produceRatingChanged(reviewType, reviewedSub, service.getAverageRating(response))
-	service.produceNotification(reviewType, reviewedSub, fullNameReviewer, userId)
-
-	reviewDTO := dto.FromReview(review)
-	reviewDTO.Id = id
-
-	return reviewDTO, nil
-	//}
-
-	//return dto.ReviewDTO{}, errors.New("reviewer doesn't have   already exists")
-
+	return dto.ReviewDTO{}, errors.New("reviewer doesn't have   already exists")
 }
 
 func (service *ReviewService) GetAllBySubReviewed(subReviewed string, reviewType int) (dto.ReviewReportDTO, error) {
