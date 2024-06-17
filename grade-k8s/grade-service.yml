@@ -19,7 +19,7 @@ spec:
           image: devopszms2024/zms-devops-grade-service:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8086
+            - containerPort: 8088
           envFrom:
             - configMapRef:
                 name: grade-configmap
@@ -31,7 +31,7 @@ spec:
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "my-kafka.backend.svc.cluster.local:9092"
             - name: KAFKA_AUTH_PASSWORD
-              value: "iiL8apGJ9c"
+              value: "bMNfTWUSS3"
 ---
 apiVersion: v1
 kind: Service
@@ -44,8 +44,8 @@ spec:
   ports:
     - protocol: TCP
       name: http
-      port: 8086
-      targetPort: 8086
+      port: 8088
+      targetPort: 8088
     - protocol: TCP
       name: grpc
       port: 8001

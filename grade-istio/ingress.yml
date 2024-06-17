@@ -16,4 +16,4 @@ spec:
         - destination:
             host: grade.backend.svc.cluster.local
             port:
-              number: 8086
+              number: 8088
