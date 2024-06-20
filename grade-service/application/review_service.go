@@ -22,6 +22,7 @@ type ReviewService struct {
 	HttpClient    *http.Client
 	bookingClient booking.BookingServiceClient
 	producer      *kafka.Producer
+	loki          promtail.Client
 }
 
 func NewReviewService(store domain.ReviewStore, httpClient *http.Client, producer *kafka.Producer, bookingClient booking.BookingServiceClient, loki promtail.Client) *ReviewService {
@@ -30,6 +31,7 @@ func NewReviewService(store domain.ReviewStore, httpClient *http.Client, produce
 		HttpClient:    httpClient,
 		bookingClient: bookingClient,
 		producer:      producer,
+		loki:          loki,
 	}
 }
 
