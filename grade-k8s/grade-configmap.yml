@@ -7,3 +7,5 @@ data:
   SERVICE_PORT: "8088"
   BOOKING_HOST: "booking"
   BOOKING_PORT: "8001"
+  JAEGER_ENDPOINT: "http://jaeger-collector.istio-system.svc.cluster.local:14268/api/traces"
+  LOKI_ENDPOINT: "http://loki.istio-system.svc.cluster.local:3100/api/prom/push"
