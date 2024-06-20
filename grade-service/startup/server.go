@@ -3,6 +3,7 @@ package startup
 import (
 	"fmt"
 	booking "github.com/ZMS-DevOps/booking-service/proto"
+	"github.com/afiskon/promtail-client/promtail"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gorilla/mux"
 	"github.com/mmmajder/zms-devops-grade-service/application"
@@ -12,19 +13,24 @@ import (
 	"github.com/mmmajder/zms-devops-grade-service/infrastructure/persistence"
 	"github.com/mmmajder/zms-devops-grade-service/startup/config"
 	"go.mongodb.org/mongo-driver/mongo"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"log"
 	"net/http"
 )
 
 type Server struct {
-	config *config.Config
-	router *mux.Router
+	config        *config.Config
+	router        *mux.Router
+	traceProvider *sdktrace.TracerProvider
+	loki          promtail.Client
 }
 
-func NewServer(config *config.Config) *Server {
+func NewServer(config *config.Config, traceProvider *sdktrace.TracerProvider, loki promtail.Client) *Server {
 	return &Server{
-		config: config,
-		router: mux.NewRouter(),
+		config:        config,
+		router:        mux.NewRouter(),
+		traceProvider: traceProvider,
+		loki:          loki,
 	}
 }
 
@@ -46,11 +52,11 @@ func (server *Server) setupHandlers(producer *kafka.Producer) {
 
 func (server *Server) initReviewService(store domain.ReviewStore, producer *kafka.Producer, bookingClient booking.BookingServiceClient) *application.ReviewService {
 
-	return application.NewReviewService(store, &http.Client{}, producer, bookingClient)
+	return application.NewReviewService(store, &http.Client{}, producer, bookingClient, server.loki)
 }
 
 func (server *Server) initReviewHandler(authService *application.ReviewService) *api.ReviewHandler {
-	return api.NewReviewHandler(authService)
+	return api.NewReviewHandler(authService, server.traceProvider, server.loki)
 }
 
 func (server *Server) initMongoClient() *mongo.Client {
